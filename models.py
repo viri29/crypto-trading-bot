@@ -31,6 +31,11 @@ class Strategy(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
+    #index: get user's strategies
+    __table_args__ = (
+        Index('idx_strategies_user', 'user_id'),
+    )
+    
 class Alert(Base):
     __tablename__ = "alerts"
     
@@ -42,6 +47,11 @@ class Alert(Base):
     is_triggered = Column(Boolean, default=False)
     triggered_at = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    #index: get user's alerts
+    __table_args__ = (
+        Index('idx_alerts_user', 'user_id'),
+        )
     
 class Trade(Base):
     __tablename__ = "trades"
@@ -56,6 +66,11 @@ class Trade(Base):
     trade_type = Column(String, nullable=False)  #"buy" or "sell"
     executed_at = Column(DateTime, default=datetime.utcnow)
     
+    #index: covers portfolio queries with and without filtering
+    __table_args__ = (
+        Index('idx_trades_portfolio_executed_at', 'portfolio_id', 'executed_at'),
+    )
+    
 class Position(Base):
     __tablename__ = "positions"
     
@@ -66,6 +81,11 @@ class Position(Base):
     average_buy_price = Column(Numeric(12,2), nullable=False)
     current_value = Column(Numeric(12,2), nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    #index: get positions by a portfolio
+    __table_args__ = (
+        Index('idx_positions_portfolio', 'portfolio_id'),
+    )
 
 class Price_History(Base):
     __tablename__ = "price_history"
@@ -75,3 +95,8 @@ class Price_History(Base):
     timestamp = Column(DateTime, nullable=False)
     volume = Column(Numeric(20,8), nullable=False)
     price = Column(Numeric(12,2), nullable=False)
+    
+    #index: covers symbol and timestamp queries
+    __table_args__ = (
+        Index('idx_price_history_symbol_timestamp', 'symbol', 'timestamp'),
+    )
