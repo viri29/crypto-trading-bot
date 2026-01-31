@@ -62,14 +62,16 @@ DB_HOST=localhost
 DB_PORT=5432
 ```
 (replace with your actual credentials)
+
 6. Run the FastAPI server
 ```
 uvicorn main:app --reload
 ```
-	•	Open ```http://127.0.0.1:8000```￼ → test the root endpoint
-	•	Open ```http://127.0.0.1:8000/docs```￼ → interactive API documentation
+- Open ```http://127.0.0.1:8000```￼ → test the root endpoint
+- Open ```http://127.0.0.1:8000/docs```￼ → interactive API documentation
+
 
 ## Notes
-	•	This setup is for local development only
-	•	Credentials are configurable via .env
-	•	Docker ensures the database is isolated and persistent via volumes
+- This setup is for local development only
+- Credentials are configurable via .env
+- Docker ensures the database is isolated and persistent via volumes
