@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
-from schemas import PortfolioCreate, TradeCreate, UserCreate
+from schemas import PortfolioCreate, PositionCreate, TradeCreate, UserCreate
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from db import SessionLocal, engine, Base
@@ -26,7 +26,10 @@ def health_check(db: Session = Depends(get_db)):
         return {"status": "healthy", "database": "connected"}
     except Exception as e:
         return {"status": "unhealthy", "error": str(e)}
-    
+
+######### API GET Endpoints #########
+
+#root endpoint
 @app.get("/")
 def root():
     return {"message": "Welcome to the Crypto Trading Bot API"}
@@ -45,6 +48,13 @@ def get_all_portfolios(db: Session = Depends(get_db)):
 @app.get("/trades")
 def get_all_trades(db: Session = Depends(get_db)):
     return db.query(Trade).all()
+
+#list all positions
+@app.get("/positions")
+def get_all_positions(db: Session = Depends(get_db)):
+    return db.query(Position).all()
+
+######### API POST Endpoints #########
 
 #accepts new user creation
 @app.post("/users")
@@ -98,6 +108,21 @@ def create_trade(trade: TradeCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(db_trade)
         return db_trade #returns created trade
+    
+    #handle potential errors
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+#accepts new position creation
+@app.post("/positions")
+def create_position(position: PositionCreate, db: Session = Depends(get_db)):
+    try:
+        db_position = Position(**position.dict()) #accepts new position object
+        db.add(db_position) #add new position to db
+        db.commit()
+        db.refresh(db_position)
+        return db_position #returns created position
     
     #handle potential errors
     except Exception as e:
