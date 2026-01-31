@@ -20,9 +20,7 @@ Full-stack algorithmic cryptocurrency trading bot with mobile app interface
 - Python 3.10+  
 - pip ```https://pip.pypa.io/en/stable/installation/```
 
-## Docker Setup
-
-## Setup
+## Project Setup
 1. Clone repository
 2. Create a Python virtual environment
 
@@ -63,7 +61,13 @@ DB_PORT=5432
 ```
 (replace with your actual credentials)
 
-6. Run the FastAPI server
+6. Connect with psql
+```
+psql -h localhost -p 5432 -U myuser -d mydb
+```
+(again, replace with your actual values)
+
+7. Run the FastAPI server
 ```
 uvicorn main:app --reload
 ```
