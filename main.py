@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Depends, HTTPException
-from schemas import PortfolioCreate, UserCreate
+from schemas import PortfolioCreate, TradeCreate, UserCreate
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from db import SessionLocal, engine, Base
-from models import User, Portfolio
+from models import User, Portfolio, Strategy, Alert, Trade, Position, Price_History
 
 Base.metadata.create_all(bind=engine)
 
@@ -41,6 +41,11 @@ def get_all_users(db: Session = Depends(get_db)):
 def get_all_portfolios(db: Session = Depends(get_db)):
     return db.query(Portfolio).all()
 
+#list all trades
+@app.get("/trades")
+def get_all_trades(db: Session = Depends(get_db)):
+    return db.query(Trade).all()
+
 #accepts new user creation
 @app.post("/users")
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
@@ -70,3 +75,31 @@ def create_portfolio(portfolio: PortfolioCreate, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))    
+    
+#accepts new trade creation
+@app.post("/trades")
+def create_trade(trade: TradeCreate, db: Session = Depends(get_db)):
+    try:
+        #calculate total value
+        trade_value = trade.quantity * trade.price
+        
+        #create trade with calculated total value
+        db_trade = Trade(
+            portfolio_id=trade.portfolio_id,
+            strategy_id=trade.strategy_id,
+            symbol=trade.symbol,
+            quantity=trade.quantity,
+            price=trade.price,
+            total_value=trade_value,
+            trade_type=trade.trade_type
+        )
+        
+        db.add(db_trade) #add new trade to db
+        db.commit()
+        db.refresh(db_trade)
+        return db_trade #returns created trade
+    
+    #handle potential errors
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
