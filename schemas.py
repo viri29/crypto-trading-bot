@@ -30,3 +30,10 @@ class TradeResponse(BaseModel):
     total_value: Decimal
     trade_type: str  #"buy" or "sell"
     executed_at: str
+    
+class PositionCreate(BaseModel):
+    portfolio_id: int
+    symbol: str
+    quantity: Decimal
+    average_buy_price: Decimal
+    current_value: Decimal
