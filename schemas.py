@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from decimal import Decimal
 
+##### anything set by the user
+
 class PortfolioCreate(BaseModel):
     user_id: int
     base_currency: str
@@ -37,3 +39,15 @@ class PositionCreate(BaseModel):
     quantity: Decimal
     average_buy_price: Decimal
     current_value: Decimal
+    
+class StrategyCreate(BaseModel):
+    user_id: int
+    strategy_type: str
+    parameters: dict | None = None
+    is_active: bool = True
+    
+class AlertCreate(BaseModel):
+    user_id: int
+    symbol: str
+    condition_type: str  #e.g., "price_above", "price_below"
+    target_price: Decimal
