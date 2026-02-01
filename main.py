@@ -1,9 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException
-from schemas import PortfolioCreate, PositionCreate, TradeCreate, UserCreate
+from schemas import AlertCreate, PortfolioCreate, PositionCreate, StrategyCreate, TradeCreate, UserCreate
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from db import SessionLocal, engine, Base
 from models import User, Portfolio, Strategy, Alert, Trade, Position, Price_History
+from utils import fetch_coin_price
 
 Base.metadata.create_all(bind=engine)
 
@@ -21,7 +22,7 @@ def get_db():
 @app.get("/health")
 def health_check(db: Session = Depends(get_db)):
     try:
-        # Try a simple query to verify DB connection
+        #query to verify DB connection
         db.execute(text("SELECT 1"))
         return {"status": "healthy", "database": "connected"}
     except Exception as e:
@@ -53,6 +54,47 @@ def get_all_trades(db: Session = Depends(get_db)):
 @app.get("/positions")
 def get_all_positions(db: Session = Depends(get_db)):
     return db.query(Position).all()
+
+#list all strategies
+@app.get("/strategies")
+def get_all_strategies(db: Session = Depends(get_db)):
+    return db.query(Strategy).all()
+
+#list all alerts
+@app.get("/alerts")
+def get_all_alerts(db: Session = Depends(get_db)):  
+    return db.query(Alert).all()
+
+
+#get price for a coin by symbol
+@app.get("/price/{symbol}")
+def get_coin_price(symbol: str, vs_currency: str = "usd"):
+    price = fetch_coin_price(symbol, vs_currency)
+    if price is None:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Symbol '{symbol.upper()}' not recognized or price not found"
+        )
+    return {"coin": symbol.upper(), "price": price, "currency": vs_currency}
+    
+#multi-coin price fetch
+@app.get("/prices")
+def get_multiple_prices(symbols: str, vs_currency: str = "usd"):
+    symbol_list = [sym.strip().upper() for sym in symbols.split(",")]
+    prices = {}
+    
+    for symbol in symbol_list:
+        price = fetch_coin_price(symbol, vs_currency)
+        if price is not None:
+            prices[symbol] = price
+            
+    if not prices:
+        raise HTTPException(
+            status_code=404, 
+            detail="No valid symbols recognized or prices found"
+        )
+        
+    return {"prices": prices, "currency": vs_currency}
 
 ######### API POST Endpoints #########
 
@@ -123,6 +165,36 @@ def create_position(position: PositionCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(db_position)
         return db_position #returns created position
+    
+    #handle potential errors
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    
+#accepts new strategy creation
+@app.post("/strategies")
+def create_strategy(strategy: StrategyCreate, db: Session = Depends(get_db)):   
+    try:
+        db_strategy = Strategy(**strategy.dict()) #accepts new strategy object
+        db.add(db_strategy) #add new strategy to db
+        db.commit()
+        db.refresh(db_strategy)
+        return db_strategy #returns created strategy
+    
+    #handle potential errors
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) 
+    
+#accepts new alert creation
+@app.post("/alerts")
+def create_alert(alert: AlertCreate, db: Session = Depends(get_db)):   
+    try:
+        db_alert = Alert(**alert.dict()) #accepts new alert object
+        db.add(db_alert) #add new alert to db
+        db.commit()
+        db.refresh(db_alert)
+        return db_alert #returns created alert
     
     #handle potential errors
     except Exception as e:
