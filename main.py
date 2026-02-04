@@ -5,6 +5,7 @@ from sqlalchemy import text
 from db import SessionLocal, engine, Base
 from models import User, Portfolio, Strategy, Alert, Trade, Position, Price_History
 from utils import fetch_coin_price
+from alert_checker import check_alerts
 
 Base.metadata.create_all(bind=engine)
 
@@ -45,29 +46,46 @@ def get_all_users(db: Session = Depends(get_db)):
 def get_all_portfolios(db: Session = Depends(get_db)):
     return db.query(Portfolio).all()
 
-#list all trades
+#list all trades by portfolio id
 @app.get("/trades")
-def get_all_trades(db: Session = Depends(get_db)):
+def get_all_trades(portfolio_id: int | None = None, db: Session = Depends(get_db)):
+    query = db.query(Trade)
+    if portfolio_id:
+        query = query.filter(Trade.portfolio_id == portfolio_id)
     return db.query(Trade).all()
 
-#list all positions
+#list all positions by position id
 @app.get("/positions")
-def get_all_positions(db: Session = Depends(get_db)):
-    return db.query(Position).all()
+def get_all_positions(position_id: int | None = None, db: Session = Depends(get_db)):
+    query = db.query(Position)
+    if position_id:
+        query = query.filter(Position.id == position_id)
+    return query.all()
 
-#list all strategies
+#list all strategies by strategy id
 @app.get("/strategies")
-def get_all_strategies(db: Session = Depends(get_db)):
-    return db.query(Strategy).all()
+def get_all_strategies(strategy_id: int | None = None, db: Session = Depends(get_db)):
+    query = db.query(Strategy)
+    if strategy_id:
+        query = query.filter(Strategy.id == strategy_id)
+    return query.all()
 
 #list all alerts
 @app.get("/alerts")
-def get_all_alerts(db: Session = Depends(get_db)):  
-    return db.query(Alert).all()
+def get_all_alerts(alert_id: int | None = None, db: Session = Depends(get_db)):  
+    query = db.query(Alert)
+    if alert_id:
+        query = query.filter(Alert.id == alert_id)
+    return query.all()
+
+@app.get("/check-alerts")
+def run_alert_check(db: Session = Depends(get_db)):
+    triggered = check_alerts(db)
+    return {"checked": True, "triggered_alerts": triggered}
 
 
 #get price for a coin by symbol
-@app.get("/price/{symbol}")
+@app.get("/price")
 def get_coin_price(symbol: str, vs_currency: str = "usd"):
     price = fetch_coin_price(symbol, vs_currency)
     if price is None:
@@ -132,8 +150,16 @@ def create_portfolio(portfolio: PortfolioCreate, db: Session = Depends(get_db)):
 @app.post("/trades")
 def create_trade(trade: TradeCreate, db: Session = Depends(get_db)):
     try:
+        #fetch call to get current price
+        current_price = fetch_coin_price(trade.symbol)
+        if current_price is None:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Symbol '{trade.symbol.upper()}' not recognized or price not found"
+            )
+        
         #calculate total value
-        trade_value = trade.quantity * trade.price
+        trade_value = trade.quantity * current_price
         
         #create trade with calculated total value
         db_trade = Trade(
@@ -141,12 +167,53 @@ def create_trade(trade: TradeCreate, db: Session = Depends(get_db)):
             strategy_id=trade.strategy_id,
             symbol=trade.symbol,
             quantity=trade.quantity,
-            price=trade.price,
+            price=current_price,
             total_value=trade_value,
             trade_type=trade.trade_type
         )
         
         db.add(db_trade) #add new trade to db
+        
+        #check if a position exists for this portfolio and symbol
+        position = db.query(Position).filter_by(
+            portfolio_id=trade.portfolio_id, 
+            symbol=trade.symbol
+        ).first() 
+        #if BUY trade
+        if trade.trade_type == "buy":
+            if position:
+                #update existing position
+                total_quantity = position.quantity + trade.quantity
+                total_cost = (position.average_buy_price * position.quantity) + trade_value
+                position.average_buy_price = total_cost / total_quantity
+                position.quantity = total_quantity
+                position.current_value = total_quantity * current_price
+                db.add(position)
+            else:
+                #create new position
+                new_position = Position(
+                    portfolio_id=trade.portfolio_id,
+                    symbol=trade.symbol,
+                    quantity=trade.quantity,
+                    average_buy_price=current_price,
+                    current_value=trade.quantity * current_price
+                )
+                db.add(new_position)
+        #if SELL trade
+        elif trade.trade_type == "sell":
+            if not position or position.quantity < trade.quantity:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Insufficient position quantity to execute sell trade"
+                )
+            #update existing position
+            position.quantity -= trade.quantity
+            position.current_value = position.quantity * current_price
+            if position.quantity == 0:
+                db.delete(position)  #remove position if quantity is zero
+            else:
+                db.add(position)
+        
         db.commit()
         db.refresh(db_trade)
         return db_trade #returns created trade
