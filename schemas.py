@@ -12,7 +12,7 @@ class PortfolioCreate(BaseModel):
 class UserCreate(BaseModel):
     email: str
     username: str
-    password_hash: str
+    password: str
     
 class TradeCreate(BaseModel):
     portfolio_id: int

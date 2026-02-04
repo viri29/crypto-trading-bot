@@ -6,6 +6,9 @@ from db import SessionLocal, engine, Base
 from models import User, Portfolio, Strategy, Alert, Trade, Position, Price_History
 from utils import fetch_coin_price
 from alert_checker import check_alerts
+from auth import hash_password, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from fastapi.security import OAuth2PasswordRequestForm
+from datetime import timedelta
 
 Base.metadata.create_all(bind=engine)
 
@@ -116,20 +119,41 @@ def get_multiple_prices(symbols: str, vs_currency: str = "usd"):
 
 ######### API POST Endpoints #########
 
-#accepts new user creation
+#accepts new user creation with password hashing
 @app.post("/users")
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     try:
-        db_user = User(**user.dict()) #accepts new user object
+        #hash the password before storing
+        password = hash_password(user.password)
+        
+        db_user = User(
+            email=user.email,
+            username=user.username,
+            password_hash=password
+        ) 
         db.add(db_user) #add new user to db
         db.commit()
         db.refresh(db_user)
         return db_user #returns created user
     
-    #handle potential errors
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+    
+@app.post("/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    #find user by username
+    user = db.query(User).filter(User.username == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect username or password!")
+    
+    #create token
+    access_token_expires = timedelta(minutes=30)
+    access_token = create_access_token(
+        data={"sub": str(user.id)}, 
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
     
 #accepts new portfolio creation
 @app.post("/portfolios")
@@ -267,3 +291,4 @@ def create_alert(alert: AlertCreate, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+    
