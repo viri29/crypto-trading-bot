@@ -19,7 +19,6 @@ class TradeCreate(BaseModel):
     strategy_id: int | None = None
     symbol: str
     quantity: Decimal
-    price: Decimal
     trade_type: str  #"buy" or "sell"
     
 class TradeResponse(BaseModel):
