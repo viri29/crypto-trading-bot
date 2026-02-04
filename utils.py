@@ -33,5 +33,4 @@ def fetch_coin_price(symbol: str, vs_currency: str = "usd"):
         data = response.json()
         return data[coin_id][vs_currency] if coin_id in data and vs_currency in data[coin_id] else None
     except requests.RequestException as e:
-        print(f"Error fetching price for {symbol}: {e}")
-        return None
+        raise RuntimeError(f"Error fetching price data: {e}")
