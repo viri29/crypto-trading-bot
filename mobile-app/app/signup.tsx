@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, TextInput, TouchableOpacity, Text, Alert } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { CRYPTO_COLORS } from '@/constants/theme';
+import { authAPI } from '@/services/api';
 
 export default function SignupScreen() {
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
     if (!email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -17,8 +20,18 @@ export default function SignupScreen() {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
-    // TODO: Connect to backend
-    Alert.alert('Success', 'Account created!');
+
+    setLoading(true);
+    try {
+      await authAPI.signup(email, username, password);
+      Alert.alert('Success', 'Account created! Please log in.', [
+        { text: 'OK', onPress: () => router.push('/login') }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Signup failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -34,6 +47,14 @@ export default function SignupScreen() {
           placeholderTextColor={CRYPTO_COLORS.GRAY}
           value={email}
           onChangeText={setEmail}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Username"
+          placeholderTextColor={CRYPTO_COLORS.GRAY}
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
         />
         <TextInput
           style={styles.input}
@@ -53,8 +74,14 @@ export default function SignupScreen() {
         />
       </View>
 
-      <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
-        <Text style={styles.signupButtonText}>sign up</Text>
+      <TouchableOpacity 
+      style={styles.signupButton} 
+      onPress={handleSignup}
+      disabled={loading}
+      >
+        <Text style={styles.signupButtonText}>
+          {loading ? 'Signing up...' : 'sign up'}
+          </Text>
       </TouchableOpacity>
 
       <View style={styles.footer}>

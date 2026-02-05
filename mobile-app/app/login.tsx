@@ -1,19 +1,31 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, TextInput, TouchableOpacity, Text, Alert } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { CRYPTO_COLORS } from '@/constants/theme';
+import { authAPI } from '@/services/api';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    if (!email || !password) {
+  const handleLogin = async () => {
+    if (!username || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-    // TODO: Connect to backend
-    Alert.alert('Success', 'Login successful!');
+
+    setLoading(true);
+    try {
+      await authAPI.login(username, password);
+      Alert.alert('Success', 'Login successful!', [
+        { text: 'OK', onPress: () => router.replace('/(tabs)/portfolio') }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -23,10 +35,10 @@ export default function LoginScreen() {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder="Username"
           placeholderTextColor={CRYPTO_COLORS.GRAY}
-          value={email}
-          onChangeText={setEmail}
+          value={username}
+          onChangeText={setUsername}
         />
         <TextInput
           style={styles.input}
@@ -38,14 +50,20 @@ export default function LoginScreen() {
         />
       </View>
 
-      <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-        <Text style={styles.loginButtonText}>log in</Text>
+      <TouchableOpacity 
+      style={styles.loginButton} 
+      onPress={handleLogin}
+      disabled={loading}
+      >
+        <Text style={styles.loginButtonText}>
+          {loading ? 'Logging in...' : 'log in'}
+        </Text>
       </TouchableOpacity>
 
       <View style={styles.footer}>
         <Link href="/signup" asChild>
           <TouchableOpacity>
-            <Text style={styles.link}>create account</Text>
+            <Text style={styles.link}>Create Account</Text>
           </TouchableOpacity>
         </Link>
       </View>
