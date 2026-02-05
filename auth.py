@@ -1,11 +1,14 @@
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+from fastapi import HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
 
 SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30   
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
@@ -34,5 +37,13 @@ def verify_token(token: str):
         user_id: int = payload.get("sub")
         if user_id is None:
             return None
+        return user_id
     except JWTError:
         return None
+
+#dependency to get current user id from token
+def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
+    user_id = verify_token(token)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+    return int(user_id)

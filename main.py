@@ -6,7 +6,7 @@ from db import SessionLocal, engine, Base
 from models import User, Portfolio, Strategy, Alert, Trade, Position, Price_History
 from utils import fetch_coin_price
 from alert_checker import check_alerts
-from auth import hash_password, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from auth import hash_password, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user_id
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 
@@ -39,23 +39,23 @@ def health_check(db: Session = Depends(get_db)):
 def root():
     return {"message": "Welcome to the Crypto Trading Bot API"}
     
-#list all users
+#list user
 @app.get("/users")
 def get_all_users(db: Session = Depends(get_db)):
     return db.query(User).all()
 
-#list all portfolios
+#list portfolio for current user
 @app.get("/portfolios")
-def get_all_portfolios(db: Session = Depends(get_db)):
-    return db.query(Portfolio).all()
+def get_all_portfolios(current_user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return db.query(Portfolio).filter(Portfolio.user_id == current_user_id).all()
 
-#list all trades by portfolio id
+#list all trades by portfolio id for current user
 @app.get("/trades")
-def get_all_trades(portfolio_id: int | None = None, db: Session = Depends(get_db)):
-    query = db.query(Trade)
+def get_all_trades(current_user_id: int = Depends(get_current_user_id), portfolio_id: int | None = None, db: Session = Depends(get_db)):
+    query = db.query(Trade).join(Portfolio).filter(Portfolio.user_id == current_user_id)
     if portfolio_id:
         query = query.filter(Trade.portfolio_id == portfolio_id)
-    return db.query(Trade).all()
+    return query.all()
 
 #list all positions by position id
 @app.get("/positions")
@@ -65,18 +65,18 @@ def get_all_positions(position_id: int | None = None, db: Session = Depends(get_
         query = query.filter(Position.id == position_id)
     return query.all()
 
-#list all strategies by strategy id
+#list all strategies by strategy id for current user
 @app.get("/strategies")
-def get_all_strategies(strategy_id: int | None = None, db: Session = Depends(get_db)):
-    query = db.query(Strategy)
+def get_all_strategies(current_user_id: int = Depends(get_current_user_id), strategy_id: int | None = None, db: Session = Depends(get_db)):
+    query = db.query(Strategy).filter(Strategy.user_id == current_user_id)
     if strategy_id:
         query = query.filter(Strategy.id == strategy_id)
     return query.all()
 
-#list all alerts
+#list all alerts for current user
 @app.get("/alerts")
-def get_all_alerts(alert_id: int | None = None, db: Session = Depends(get_db)):  
-    query = db.query(Alert)
+def get_all_alerts(current_user_id: int = Depends(get_current_user_id), alert_id: int | None = None, db: Session = Depends(get_db)):  
+    query = db.query(Alert).filter(Alert.user_id == current_user_id)
     if alert_id:
         query = query.filter(Alert.id == alert_id)
     return query.all()
@@ -116,6 +116,8 @@ def get_multiple_prices(symbols: str, vs_currency: str = "usd"):
         )
         
     return {"prices": prices, "currency": vs_currency}
+
+
 
 ######### API POST Endpoints #########
 
