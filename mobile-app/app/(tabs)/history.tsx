@@ -1,18 +1,41 @@
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { CRYPTO_COLORS } from '@/constants/theme';
+import { portfolioAPI, tradesAPI } from '@/services/api';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function HistoryScreen() {
-  const trades = [
-    { id: 1, type: 'BUY', asset: 'BTC', amount: '0.5', price: '$21,500', date: '2024-01-31' },
-    { id: 2, type: 'SELL', asset: 'ETH', amount: '2', price: '$3,200', date: '2024-01-30' },
-    { id: 3, type: 'BUY', asset: 'XRP', amount: '100', price: '$450', date: '2024-01-29' },
-  ];
+  //loading real trades from api when screen focuses
+  const [loading, setLoading] = useState(true);
+  const [tradeHistory, setTradeHistory] = useState<any[]>([]);
 
-  const handleTradePress = (trade: any) => {
-    // TODO: Navigate to trade detail view
-    console.log('Viewing trade details:', trade);
+  //portfolioId state to fetch trades for specific portfolio
+  const [portfolioId, setPortfolioId] = useState<number | null>(null);
+
+
+  //load data function that fetches portfolio id then trades for that portfolio
+  const loadData = async () => {
+    try {
+      const portfolios = await portfolioAPI.getAll();
+      if (portfolios.length > 0) {
+        const id = portfolios[0].id; //for simplicity, using first portfolio
+        setPortfolioId(id);
+        const tradesData = await tradesAPI.getAll(id);
+        setTradeHistory(tradesData);
+      }
+    } catch (error) {
+      console.error('Failed to load trade history:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  //useFocusEffect to call loadData
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   return (
     <ScrollView style={styles.container}>
@@ -23,25 +46,24 @@ export default function HistoryScreen() {
 
       {/* Trade List */}
       <View style={styles.section}>
-        {trades.map((trade) => (
+        {tradeHistory.map((trade) => (
           <TouchableOpacity
             key={trade.id}
             style={styles.tradeItem}
-            onPress={() => handleTradePress(trade)}
           >
             <View style={styles.tradeContent}>
               <View>
-                <Text style={styles.tradeType}>{trade.type}</Text>
-                <Text style={styles.tradeAsset}>{trade.asset}</Text>
+                <Text style={styles.tradeType}>{trade.trade_type}</Text>
+                <Text style={styles.tradeSymbol}>{trade.symbol}</Text>
               </View>
               <View>
-                <Text style={styles.tradeAmount}>{trade.amount}</Text>
-                <Text style={styles.tradeDate}>{trade.date}</Text>
+                <Text style={styles.tradeQuantity}>{trade.quantity}</Text>
+                <Text style={styles.tradeExecutedAt}>{trade.executed_at}</Text>
               </View>
             </View>
             <View style={styles.tradeRight}>
-              <Text style={[styles.tradePrice, trade.type === 'BUY' ? styles.buy : styles.sell]}>
-                {trade.type === 'BUY' ? '+' : '-'}{trade.price}
+              <Text style={[styles.tradePrice, trade.trade_type === 'BUY' ? styles.buy : styles.sell]}>
+                {trade.trade_type === 'BUY' ? '+' : '-'}{trade.total_value}
               </Text>
               <Text style={styles.expandIcon}>›</Text>
             </View>
@@ -94,18 +116,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 10,
   },
-  tradeAsset: {
+  tradeSymbol: {
     color: CRYPTO_COLORS.GRAY,
     fontSize: 13,
   },
-  tradeAmount: {
+  tradeQuantity: {
     color: CRYPTO_COLORS.WHITE,
     fontSize: 15,
     fontWeight: '600',
     textAlign: 'right',
     marginBottom: 10,
   },
-  tradeDate: {
+  tradeExecutedAt: {
     color: CRYPTO_COLORS.GRAY,
     fontSize: 13,
     textAlign: 'right',
