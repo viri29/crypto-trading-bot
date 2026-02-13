@@ -81,8 +81,8 @@ export default function HistoryScreen() {
               </View>
             </View>
             <View style={styles.tradeRight}>
-              <Text style={[styles.tradePrice, trade.trade_type === 'BUY' ? styles.buy : styles.sell]}>
-                {trade.trade_type === 'BUY' ? '+' : '-'}{trade.total_value}
+              <Text style={[styles.tradePrice, trade.trade_type.toUpperCase() === 'BUY' ? styles.buy : styles.sell]}>
+                {trade.trade_type.toUpperCase() === 'BUY' ? '+' : '-'}${Number(trade.total_value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
               <Text style={styles.expandIcon}>›</Text>
             </View>
