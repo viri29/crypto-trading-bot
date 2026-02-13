@@ -12,6 +12,7 @@ export default function HistoryScreen() {
   //portfolioId state to fetch trades for specific portfolio
   const [portfolioId, setPortfolioId] = useState<number | null>(null);
 
+  //
 
   //load data function that fetches portfolio id then trades for that portfolio
   const loadData = async () => {
@@ -37,6 +38,23 @@ export default function HistoryScreen() {
     }, [])
   );
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={CRYPTO_COLORS.BLUE} />
+      </View>
+    );
+  }
+
+  if (tradeHistory.length === 0) {
+  return (
+    <View style={[styles.container, styles.centered]}>
+      <Text style={styles.emptyText}>No trades yet</Text>
+      <Text style={styles.emptySubtext}>Execute a trade to see your history</Text>
+    </View>
+  );
+}
+
   return (
     <ScrollView style={styles.container}>
       {/* Header */}
@@ -46,19 +64,20 @@ export default function HistoryScreen() {
 
       {/* Trade List */}
       <View style={styles.section}>
-        {tradeHistory.map((trade) => (
+        {
+          tradeHistory.map((trade) => (
           <TouchableOpacity
             key={trade.id}
             style={styles.tradeItem}
           >
             <View style={styles.tradeContent}>
               <View>
-                <Text style={styles.tradeType}>{trade.trade_type}</Text>
+                <Text style={styles.tradeType}>{trade.trade_type.toUpperCase()}</Text>
                 <Text style={styles.tradeSymbol}>{trade.symbol}</Text>
               </View>
               <View>
                 <Text style={styles.tradeQuantity}>{trade.quantity}</Text>
-                <Text style={styles.tradeExecutedAt}>{trade.executed_at}</Text>
+                <Text style={styles.tradeExecutedAt}>{new Date(trade.executed_at).toLocaleDateString()}</Text>
               </View>
             </View>
             <View style={styles.tradeRight}>
@@ -68,7 +87,8 @@ export default function HistoryScreen() {
               <Text style={styles.expandIcon}>›</Text>
             </View>
           </TouchableOpacity>
-        ))}
+        ))
+      }
       </View>
     </ScrollView>
   );
@@ -94,6 +114,12 @@ const styles = StyleSheet.create({
   section: {
     padding: 15,
     gap: 5,
+  },
+  sectionTitle: {
+    color: CRYPTO_COLORS.WHITE,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
   },
   tradeItem: {
     flexDirection: 'row',
@@ -149,5 +175,20 @@ const styles = StyleSheet.create({
   expandIcon: {
     color: CRYPTO_COLORS.GRAY,
     fontSize: 18,
+  },
+  emptyText: {
+    color: CRYPTO_COLORS.WHITE,
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    color: CRYPTO_COLORS.GRAY,
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
