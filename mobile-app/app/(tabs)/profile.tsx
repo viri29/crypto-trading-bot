@@ -1,10 +1,57 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
+import { router } from 'expo-router';
 import { CRYPTO_COLORS } from '@/constants/theme';
+import { authAPI } from '@/services/api';
 
 export default function ProfileScreen() {
   const [isPaperMode, setIsPaperMode] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const userData = await authAPI.getCurrentUser();
+      setUser(userData);
+    } catch (error: any) {
+      console.error('Failed to load user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await authAPI.logout();
+            router.replace('/login');
+          }
+        }
+      ]
+    );
+  };
+  
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={CRYPTO_COLORS.BLUE} />
+      </View>
+    );
+  }
+
+  const initials = user?.username ? user.username.substring(0, 2).toUpperCase() : 'U';
 
   return (
     <ScrollView style={styles.container}>
@@ -17,11 +64,11 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <View style={styles.userCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>JD</Text>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <View>
-            <Text style={styles.userName}>John Doe</Text>
-            <Text style={styles.userEmail}>john@example.com</Text>
+            <Text style={styles.userName}>{user?.username || 'Unknown'}</Text>
+            <Text style={styles.userEmail}>{user?.email || 'No email'}</Text>
           </View>
         </View>
       </View>
@@ -81,7 +128,7 @@ export default function ProfileScreen() {
 
       {/* Logout */}
       <View style={styles.section}>
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </View>
@@ -93,6 +140,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: CRYPTO_COLORS.DARK_BLUE,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     padding: 20,
