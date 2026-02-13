@@ -1,10 +1,85 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { CRYPTO_COLORS } from '@/constants/theme';
+import {tradesAPI, portfolioAPI, priceAPI} from '@/services/api';
 
 export default function TradeScreen() {
   const [amount, setAmount] = useState('');
   const [selectedCrypto, setSelectedCrypto] = useState('BTC');
+  const [loadingTrades, setLoadingTrades] = useState(false);
+  const [trades, setTrades] = useState([]);
+  const [currentPrice, setCurrentPrice] = useState(null);
+  const [portfolioId, setPortfolioId] = useState<number | null>(null);
+
+  //fetch current price when screen loads or crypto selection changes
+  useEffect(() => {
+    const fetchPrice = async () => {
+      try {
+        const priceData = await priceAPI.getPrice(selectedCrypto);
+        setCurrentPrice(priceData.price);
+      } catch (error) {
+        console.error('Error fetching price:', error);
+      }
+    };
+    fetchPrice();
+  }, [selectedCrypto]);
+
+  //fetch portfolios when screen loads
+  useEffect(() => {
+    const fetchPortfolios = async () => {
+      try {
+        const portfoliosData = await portfolioAPI.getAll();
+        setPortfolioId(portfoliosData[0].id);  
+        console.log('Fetched portfolios:', portfoliosData);
+      } catch (error) {
+        console.error('Error fetching portfolios:', error);
+      }
+    };
+    fetchPortfolios();
+  }, []); 
+
+//handleBuy and handleSell functions
+const handleBuy = async () => {
+  if (!portfolioId) {
+    Alert.alert('Error', 'No portfolio available');
+    return;
+  }
+  if (!amount || parseFloat(amount) <= 0) {
+    Alert.alert('Error', 'Please enter a valid amount');
+    return;
+  }
+  setLoadingTrades(true);
+  try {
+    const trade = await tradesAPI.create(portfolioId, selectedCrypto, parseFloat(amount), 'buy');
+    Alert.alert('Success', `Bought ${amount} ${selectedCrypto} at $${trade.price.toLocaleString()}`);
+    setAmount(''); //clear input after trade
+  } catch (error: any) {
+    Alert.alert('Error', error.message || 'Trade failed');
+  } finally {
+    setLoadingTrades(false);
+  }
+};
+ 
+const handleSell = async () => {
+  if (!portfolioId) {
+    Alert.alert('Error', 'No portfolio available');
+    return;
+  }
+  if (!amount || parseFloat(amount) <= 0) {
+    Alert.alert('Error', 'Please enter a valid amount');
+    return;
+  }
+  setLoadingTrades(true);
+  try {
+    const trade = await tradesAPI.create(portfolioId, selectedCrypto, parseFloat(amount), 'sell');
+    Alert.alert('Success', `Sold ${amount} ${selectedCrypto} at $${trade.price.toLocaleString()}`);
+    setAmount(''); 
+  } catch (error: any) {
+    Alert.alert('Error', error.message || 'Trade failed');
+  } finally {
+    setLoadingTrades(false);
+  }
+};
 
   return (
     <ScrollView style={styles.container}>
@@ -39,6 +114,15 @@ export default function TradeScreen() {
         </View>
       </View>
 
+      <View style={{ marginTop: 15 }}>
+        <Text style={{ color: CRYPTO_COLORS.GRAY, fontSize: 14 }}>
+          Current {selectedCrypto} Price:{' '}
+          {currentPrice !== null
+            ? `$${Number(currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : 'Loading...'}
+        </Text>
+      </View>
+
       {/* Manual Trade Form */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Manual Trade Execution</Text>
@@ -51,11 +135,23 @@ export default function TradeScreen() {
           keyboardType="decimal-pad"
         />
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={[styles.tradeButton, styles.buyButton]}>
-            <Text style={styles.tradeButtonText}>BUY</Text>
+          <TouchableOpacity
+            style={[styles.tradeButton, styles.buyButton]}
+            onPress={handleBuy}
+            disabled={loadingTrades}
+          >
+            <Text style={styles.tradeButtonText}>
+              {loadingTrades ? 'Processing...' : 'BUY'}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.tradeButton, styles.sellButton]}>
-            <Text style={styles.tradeButtonText}>SELL</Text>
+          <TouchableOpacity
+            style={[styles.tradeButton, styles.sellButton]}
+            onPress={handleSell}
+            disabled={loadingTrades}
+          >
+            <Text style={styles.tradeButtonText}>
+              {loadingTrades ? 'Processing...' : 'SELL'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
