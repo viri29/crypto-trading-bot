@@ -9,6 +9,7 @@ from alert_checker import check_alerts
 from auth import hash_password, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user_id
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
+from decimal import Decimal
 
 Base.metadata.create_all(bind=engine)
 
@@ -117,6 +118,18 @@ def get_multiple_prices(symbols: str, vs_currency: str = "usd"):
         
     return {"prices": prices, "currency": vs_currency}
 
+#get current user info
+@app.get("/me")
+def get_current_user(current_user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == current_user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "created_at": user.created_at
+    }
 
 
 ######### API POST Endpoints #########
@@ -145,7 +158,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     #find user by username
-    user = db.query(User).filter(User.username == form_data.username).first()
+    user = db.query(User).filter(User.username.ilike(form_data.username)).first()
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Incorrect username or password!")
     
@@ -185,7 +198,7 @@ def create_trade(trade: TradeCreate, db: Session = Depends(get_db)):
             )
         
         #calculate total value
-        trade_value = trade.quantity * current_price
+        trade_value = trade.quantity * Decimal(str(current_price))
         
         #create trade with calculated total value
         db_trade = Trade(
@@ -213,7 +226,7 @@ def create_trade(trade: TradeCreate, db: Session = Depends(get_db)):
                 total_cost = (position.average_buy_price * position.quantity) + trade_value
                 position.average_buy_price = total_cost / total_quantity
                 position.quantity = total_quantity
-                position.current_value = total_quantity * current_price
+                position.current_value = total_quantity * Decimal(str(current_price))
                 db.add(position)
             else:
                 #create new position
@@ -222,7 +235,7 @@ def create_trade(trade: TradeCreate, db: Session = Depends(get_db)):
                     symbol=trade.symbol,
                     quantity=trade.quantity,
                     average_buy_price=current_price,
-                    current_value=trade.quantity * current_price
+                    current_value=trade.quantity * Decimal(str(current_price))
                 )
                 db.add(new_position)
         #if SELL trade
@@ -234,7 +247,7 @@ def create_trade(trade: TradeCreate, db: Session = Depends(get_db)):
                 )
             #update existing position
             position.quantity -= trade.quantity
-            position.current_value = position.quantity * current_price
+            position.current_value = position.quantity * Decimal(str(current_price))
             if position.quantity == 0:
                 db.delete(position)  #remove position if quantity is zero
             else:
