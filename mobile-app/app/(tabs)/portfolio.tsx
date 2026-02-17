@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { StyleSheet, View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import { CRYPTO_COLORS } from '@/constants/theme';
-import { portfolioAPI, positionAPI } from '@/services/api';
+import { authAPI, portfolioAPI, positionAPI } from '@/services/api';
 import { useFocusEffect } from '@react-navigation/native';
 
 
@@ -10,6 +10,7 @@ export default function PortfolioScreen() {
   const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   //refersh function to reload data when user pulls down
   const onRefresh = async () => {
@@ -18,26 +19,47 @@ export default function PortfolioScreen() {
     setRefreshing(false);
   };
 
-  const loadData = async () => {
-    try {
-      const [portfolioData, positionData] = await Promise.all([
-        portfolioAPI.getAll(),
-        positionAPI.getAll()
-      ]);
-      setPortfolios(portfolioData);
-      setPositions(positionData);
-    } catch (error: any) {
-      console.error('Failed to load portfolio data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+const loadData = async () => {
+  try {
+    const [portfolioData, positionData, userData] = await Promise.all([
+      portfolioAPI.getAll(),
+      positionAPI.getAll(),
+      authAPI.getCurrentUser()
+    ]);
+    console.log('userData:', userData);  // Add this
+    setPortfolios(portfolioData);
+    setPositions(positionData);
+    setCurrentUser(userData);
+  } catch (error: any) {
+    console.error('Failed to load portfolio data:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useFocusEffect(
     useCallback(() => {
       loadData();
     }, [])
   );
+
+  //create portfolio function that calls portfolioAPI.create and updates state with new portfolio
+const createPortfolio = async () => {
+  if (!currentUser) {
+    console.error('User not loaded yet');
+    return;
+  }
+  try {
+    const newPortfolio = await portfolioAPI.create(
+      currentUser.id,
+      'USD',
+      10000
+    );
+    await loadData();
+  } catch (error: any) {
+    console.error('Failed to create portfolio:', error);
+  }
+};
 
   const calculateTotalValue = () => {
     return positions.reduce((sum, pos) => sum + parseFloat(pos.current_value), 0);
@@ -61,17 +83,21 @@ export default function PortfolioScreen() {
   }
 
   if (portfolios.length === 0) {
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <Text style={styles.emptyText}>No portfolios yet</Text>
-        <Text style={styles.emptySubtext}>Create a portfolio to start trading</Text>
-      </View>
-    );
-  }
+  return (
+    <View style={[styles.container, styles.centered]}>
+      <Text style={styles.emptyText}>No portfolios yet</Text>
+      <Text style={styles.emptySubtext}>Create a portfolio to start trading</Text>
+      <TouchableOpacity style={styles.createButton} onPress={createPortfolio}>
+        <Text style={styles.createButtonText}>Create Portfolio</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
   const totalValue = calculateTotalValue();
   const pnl = calculatePnL();
   const pnlPercent = totalValue > 0 ? (pnl / totalValue) * 100 : 0;
+
 
   return (
     <ScrollView 
@@ -104,7 +130,7 @@ export default function PortfolioScreen() {
           </Text>
         </View>
       </View>
-
+      
       {/* Asset Breakdown */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Asset Breakdown</Text>
@@ -226,4 +252,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
   },
+  createButton: {
+  marginTop: 20,
+  backgroundColor: CRYPTO_COLORS.BLUE,
+  paddingVertical: 12,
+  paddingHorizontal: 30,
+  borderRadius: 25,
+},
+createButtonText: {
+  color: CRYPTO_COLORS.WHITE,
+  fontSize: 16,
+  fontWeight: '600',
+},
 });

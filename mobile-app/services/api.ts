@@ -102,7 +102,8 @@ export const portfolioAPI = {
         return await apiRequest('/portfolios', 'POST', { 
             user_id: userID, 
             base_currency: baseCurrency, 
-            initial_balance: initialBalance
+            initial_balance: initialBalance,
+            is_paper_trading: true
             });
         },
 };
