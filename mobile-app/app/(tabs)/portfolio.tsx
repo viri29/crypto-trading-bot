@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import { CRYPTO_COLORS } from '@/constants/theme';
 import { portfolioAPI, positionAPI } from '@/services/api';
 import { useFocusEffect } from '@react-navigation/native';
@@ -9,7 +9,14 @@ export default function PortfolioScreen() {
   const [portfolios, setPortfolios] = useState<any[]>([]);
   const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
+  //refersh function to reload data when user pulls down
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
 
   const loadData = async () => {
     try {
@@ -67,7 +74,10 @@ export default function PortfolioScreen() {
   const pnlPercent = totalValue > 0 ? (pnl / totalValue) * 100 : 0;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+    style={styles.container} 
+    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Portfolio</Text>

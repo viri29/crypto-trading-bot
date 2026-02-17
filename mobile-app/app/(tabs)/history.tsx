@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { CRYPTO_COLORS } from '@/constants/theme';
 import { portfolioAPI, tradesAPI } from '@/services/api';
 import { useFocusEffect } from '@react-navigation/native';
@@ -12,7 +12,13 @@ export default function HistoryScreen() {
   //portfolioId state to fetch trades for specific portfolio
   const [portfolioId, setPortfolioId] = useState<number | null>(null);
 
-  //
+  //refresh function to reload data when user pulls down
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
 
   //load data function that fetches portfolio id then trades for that portfolio
   const loadData = async () => {
@@ -56,7 +62,10 @@ export default function HistoryScreen() {
 }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+    style={styles.container}
+    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Trade History</Text>
