@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://localhost:8000'; //ios simulator
+const API_BASE_URL = 'http://18.220.237.130:8000'; //aws backend
 const TOKEN_KEY = 'auth_token';
 
 export const setAuthToken = async (token: string) => {
