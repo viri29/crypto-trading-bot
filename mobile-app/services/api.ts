@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://18.220.237.130:8000'; //aws backend
+const API_BASE_URL = 'http://16.59.15.32:8000'; //aws elastic IP address of backend server
 const TOKEN_KEY = 'auth_token';
 
 export const setAuthToken = async (token: string) => {
@@ -142,6 +142,10 @@ export const priceAPI = {
         const symbolsParam = symbols.join(',');
         return await apiRequest(`/prices?symbols=${symbolsParam}`, 'GET', null, false);
     },
+
+    getHistoricalPrice: async (symbol: string, days: number = 7) => {
+        return await apiRequest(`/historical-price?symbol=${symbol}&days=${days}`, 'GET', null, false);
+    },
 }
 
 //alert api
@@ -158,3 +162,5 @@ export const alertAPI = {
         });
     },
 };
+  
+    
