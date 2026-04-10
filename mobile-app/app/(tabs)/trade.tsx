@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { CRYPTO_COLORS } from '@/constants/theme';
 import {tradesAPI, portfolioAPI, priceAPI} from '@/services/api';
+import { LineChart } from 'react-native-chart-kit';
+import { Dimensions } from 'react-native';
 
 export default function TradeScreen() {
   const [amount, setAmount] = useState('');
@@ -10,6 +12,8 @@ export default function TradeScreen() {
   const [trades, setTrades] = useState([]);
   const [currentPrice, setCurrentPrice] = useState(null);
   const [portfolioId, setPortfolioId] = useState<number | null>(null);
+  const [historicalPrices, setHistoricalPrices] = useState<any[]>([]);
+  const prices = historicalPrices.map(item => item[1]); //extract price from [timestamp, price] format
 
   //fetch current price when screen loads or crypto selection changes
   useEffect(() => {
@@ -37,6 +41,12 @@ export default function TradeScreen() {
     };
     fetchPortfolios();
   }, []); 
+
+  //
+  useEffect(() => {
+    fetchHistoricalPrice(selectedCrypto);
+  }, 
+  [selectedCrypto]);
 
 //handleBuy and handleSell functions
 const handleBuy = async () => {
@@ -79,6 +89,17 @@ const handleSell = async () => {
   } finally {
     setLoadingTrades(false);
   }
+};
+
+  //historical price data fetching function
+  const fetchHistoricalPrice = async (symbol: string) => {
+    try {
+      const response = await priceAPI.getHistoricalPrice(symbol, 7);
+      setHistoricalPrices(response.historical_prices);
+      console.log('Historical price response:', response);
+    } catch (error) {
+      console.error('Error fetching historical price:', error);
+    }
 };
 
   return (
@@ -160,7 +181,33 @@ const handleSell = async () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Price Charts</Text>
         <View style={styles.chartPlaceholder}>
-          <Text style={styles.chartText}>Chart Coming Soon</Text>
+          {historicalPrices.length > 0 ? (
+            <LineChart
+              data={{
+                labels: [],
+                datasets: [{
+                  data: prices
+                }]
+              }}
+              width={Dimensions.get('window').width - 30}
+              height={200}
+              chartConfig={{
+                backgroundColor: CRYPTO_COLORS.BLUE,
+                backgroundGradientFrom: CRYPTO_COLORS.BLUE,
+                backgroundGradientTo: CRYPTO_COLORS.DARK_BLUE,
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                style: {
+                  borderRadius: 16
+                }
+              }}
+              withDots={false}
+              style={styles.chart}
+            />
+          ) : (
+            <Text style={styles.chartText}>Loading chart...</Text>
+          )}
         </View>
       </View>
     </ScrollView>
@@ -259,4 +306,7 @@ const styles = StyleSheet.create({
     color: CRYPTO_COLORS.GRAY,
     fontSize: 16,
   },
+  chart: {
+    marginVertical: 8,
+  }
 });
