@@ -34,3 +34,21 @@ def fetch_coin_price(symbol: str, vs_currency: str = "usd"):
         return data[coin_id][vs_currency] if coin_id in data and vs_currency in data[coin_id] else None
     except requests.RequestException as e:
         raise RuntimeError(f"Error fetching price data: {e}")
+    
+#fetch historical price data from CoinGecko API
+def fetch_historical_price(symbol: str, vs_currency: str = "usd", days: int = 30):
+    coin_id = SYMBOL_TO_ID.get(symbol.upper())
+    if not coin_id:
+        print(f"Symbol '{symbol}' not recognized.")
+        return None
+
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+    params = {"vs_currency": vs_currency, "days": days}
+
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("prices", [])
+    except requests.RequestException as e:
+        raise RuntimeError(f"Error fetching historical price data: {e}")

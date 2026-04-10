@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from db import SessionLocal, engine, Base
 from models import User, Portfolio, Strategy, Alert, Trade, Position, Price_History
-from utils import fetch_coin_price
+from utils import fetch_coin_price, fetch_historical_price
 from alert_checker import check_alerts
 from auth import hash_password, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user_id
 from fastapi.security import OAuth2PasswordRequestForm
@@ -131,6 +131,16 @@ def get_current_user(current_user_id: int = Depends(get_current_user_id), db: Se
         "created_at": user.created_at
     }
 
+#get historical price data for a coin by symbol
+@app.get("/historical-price")
+def get_historical_price(symbol: str, vs_currency: str = "usd", days: int = 30):
+    historical_data = fetch_historical_price(symbol, vs_currency, days)
+    if historical_data is None:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Symbol '{symbol.upper()}' not recognized or historical price data not found"
+        )
+    return {"symbol": symbol.upper(), "historical_prices": historical_data, "currency": vs_currency}
 
 ######### API POST Endpoints #########
 
