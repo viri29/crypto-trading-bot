@@ -48,6 +48,8 @@ This project serves as a comprehensive portfolio piece demonstrating full-stack 
 - **systemd** - Service management for 24/7 uptime
 - **Elastic IP** - Static IP addressing
 
+#### *** *Live Deployment has since been discontinued following the expiration of Free Tier resources* ***
+
 ### External APIs
 - **CoinGecko API** (free tier) - Real-time and historical cryptocurrency pricing
 
